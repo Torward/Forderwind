@@ -4,15 +4,24 @@ import java.io.File;
 import java.io.Serializable;
 
 public class UploadFileMsg implements Serializable {
-private static final long SERIAL_ID = 1L;
+private static final long serialVersionUID = 1L;
 private File file;
 private int start;
 private int end;
 private byte[] bytes;
 private String file_md5;
+private String filePath;
 
-    public static long getSerialId() {
-        return SERIAL_ID;
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
+
+    public static long getSerialVersionUID() {
+        return serialVersionUID;
     }
 
     public File getFile() {

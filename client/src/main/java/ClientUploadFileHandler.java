@@ -16,6 +16,7 @@ public class ClientUploadFileHandler extends ChannelInboundHandlerAdapter {
     public RandomAccessFile randomAccessFile;
     private UploadFileMsg uploadFileMsg;
     public TextArea log_area;
+    private String path = "server/serverFiles";
 
     public ClientUploadFileHandler(UploadFileMsg fu) {
         if (fu.getFile().exists()) {
@@ -30,13 +31,13 @@ public class ClientUploadFileHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         super.channelInactive(ctx);
-        log_area.appendText("Передача окончена!");
+        //log_area.appendText("Передача окончена!");
         log.debug("Клиент закончил передачу!");
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        log.debug("Метод channelActive() выполняется...");
+        log.debug("Данные поступили...");
         try {
             randomAccessFile = new RandomAccessFile(uploadFileMsg.getFile(), "r");
             randomAccessFile.seek(uploadFileMsg.getStart());
@@ -59,13 +60,14 @@ public class ClientUploadFileHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+       uploadFileMsg.getBytes();
         if (msg instanceof Integer) {
             start = (Integer) msg;
             if (start != -1) {
                 randomAccessFile = new RandomAccessFile(uploadFileMsg.getFile(), "r");
                 randomAccessFile.seek(start);
                 int a = (int) (randomAccessFile.length() - start);
-                int b = (int) (randomAccessFile.length() / 1024 * 2);
+                int b = (int) (randomAccessFile.length() / 1024 * 10);
                 if (a < lastLength) {
                     lastLength = a;
                 }
@@ -87,5 +89,11 @@ public class ClientUploadFileHandler extends ChannelInboundHandlerAdapter {
             }
 
         }
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        cause.printStackTrace();
+        ctx.close();
     }
 }

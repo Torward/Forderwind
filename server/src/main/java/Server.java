@@ -1,3 +1,4 @@
+import Model.UploadFileMsg;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class Server {
+    private UploadFileMsg uploadFileMsg;
 
     public Server()  {
         EventLoopGroup auth = new NioEventLoopGroup(1);//тяжеловесный воркер и лёгкий воркер
@@ -33,7 +35,7 @@ public class Server {
                         //можно добавить хендлеры
                     }
                 });
-        ChannelFuture channelFuture = serverBootstrap.bind(8188).sync();
+        ChannelFuture channelFuture = serverBootstrap.bind(8287).sync();
         log.debug("Server started...");
         channelFuture.channel().closeFuture().sync();//блокирующая операция
     }catch (Exception e){
