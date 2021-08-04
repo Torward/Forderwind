@@ -2,6 +2,7 @@ import Model.UploadFileMsg;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -15,10 +16,11 @@ import lombok.extern.slf4j.Slf4j;
 public class NettyNetwork {
     private SocketChannel channel;
     private UploadFileMsg uploadFileMsg;
+    ChannelPromise channelPromise;
 
     public NettyNetwork(UploadFileMsg uploadFileMsg) {
         this.uploadFileMsg = uploadFileMsg;
-        Thread thread = new Thread(()->{
+        /*Thread thread = new Thread(()->{*/
             EventLoopGroup worker = new NioEventLoopGroup();
             try {
                 Bootstrap bootstrap = new Bootstrap();
@@ -30,21 +32,25 @@ public class NettyNetwork {
                                 channel = ch;
                                 ch.pipeline().addLast(
                                         new ObjectEncoder(),
-                                        new ObjectDecoder(ClassResolvers.cacheDisabled(null)),
+                                        new ObjectDecoder(ClassResolvers.weakCachingResolver(ClientUploadFileHandler.class.getClassLoader())),
                                         new ClientUploadFileHandler(uploadFileMsg)
                                 );
                             }
                         });
-                ChannelFuture future = bootstrap.connect("localhost", 8188).sync();
+                ChannelFuture future = bootstrap.connect("localhost", 8287).sync();
                 future.channel().closeFuture().sync();
             }catch (Exception e){
                 e.printStackTrace();
+                System.out.println("Ошибка с ChannelFuture");
             }finally {
                 worker.shutdownGracefully();
             }
-        });
+       /* });
         thread.setDaemon(true);
-        thread.start();
+        thread.start();*/
+    }
+    public void writeMessage(UploadFileMsg message){
+        channel.writeAndFlush(message);
     }
 
 }

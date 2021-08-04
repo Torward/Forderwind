@@ -1,51 +1,98 @@
 import Model.UploadFileMsg;
-import javafx.application.Platform;
 import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.TilePane;
+import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import model.Setting;
 
 import java.awt.*;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
-import java.util.Collections;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.List;
-import java.util.ResourceBundle;
 
-public class CSfirstScreen  implements Initializable {
+public class CSfirstScreen implements Initializable {
     public Button download_btn;
     public Button upload_btn;
     public TextArea log_area;
     public AnchorPane dragAndDropPane;
     public TilePane serverView;
     public Label text;
+    public AnchorPane person;
+    public ImageView ava;
+    public Label nickname;
     private Pane leftScene;
     private Desktop desktop = Desktop.getDesktop();
-    private TilePane tilepane = new TilePane();
     private NettyNetwork network;
-    private UploadFileMsg uploadFileMsg;
+    private UploadFileMsg uploadFileMsg = new UploadFileMsg();
     private ClientUploadFileHandler clientUploadFileHandler;
+    private String root = "client/clientFiles";
+    private String sroot = "server/serverFiles";
+    private int readByte;
+    private volatile int start = 0;
+    @FXML
+    private GridPane setGrid;
+    private List<Setting> settings;
+    private Setting set;
 
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        tilepane.setPrefTileWidth(70);
-        tilepane.setPrefTileHeight(70);
-        tilepane.setTileAlignment(Pos.CENTER);
+        settings = new ArrayList<>(data());
+        int col = 0;
+        int row = 1;
+        try {
+            for (int i = 0; i < settings.size(); i++) {
+                FXMLLoader fxmlLoader = new FXMLLoader();
+                fxmlLoader.setLocation(getClass().getResource("item.fxml"));
+                HBox settingItem = fxmlLoader.load();
+                ItemController itemController = fxmlLoader.getController();
+                if (col == 3){
+                    col =0;
+                    ++row;
+                }
+                setGrid.add(settingItem, col++, row);
+                GridPane.setMargin(settingItem, new Insets(10));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        nickname.setUnderline(true);
+        nickname.setText("Егорыч");
 
 
+    }
+
+    private List<Setting> data() {
+        ItemController controller = new ItemController();
+        File dir = new File(sroot); //path указывает на директорию
+        File[] arrFiles = dir.listFiles();
+        List<File> lst = Arrays.asList(arrFiles);
+        List<Setting> ls = new ArrayList<>();
+        Setting setting = new Setting();
+        for (File file: arrFiles) {
+            if (file.isFile()){
+                setting.setFileViewSrc("client/src/main/resources/img/txt.png");
+                setting.setFileName( file.getName().toString());
+            }
+        }
+        ls.add(setting);
+
+        return ls;
     }
 
     public void download(ActionEvent actionEvent) {
@@ -59,7 +106,22 @@ public class CSfirstScreen  implements Initializable {
         FileChooser fileChooser = new FileChooser();
         Stage secondaryStage = new Stage();
         fileChooser.setTitle("Выберете файл для отправки");
-        fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+        fileChooser.setInitialDirectory(new File(System.getProperty("user.dir")));
+
+        File file = fileChooser.showOpenDialog(secondaryStage);
+
+        if (file != null) {
+            sendFile(file);
+            List<File> files = Collections.singletonList(file);
+            printLog(log_area, files);
+        }
+    }
+
+    public void fileChooseM(MouseEvent mouseEvent) {
+        FileChooser fileChooser = new FileChooser();
+        Stage secondaryStage = new Stage();
+        fileChooser.setTitle("Выберете файл для отправки");
+        fileChooser.setInitialDirectory(new File(System.getProperty("user.dir")));
 
         File file = fileChooser.showOpenDialog(secondaryStage);
 
@@ -72,10 +134,22 @@ public class CSfirstScreen  implements Initializable {
 
 
     private void sendFile(File file) {
+
         try {
-            uploadFileMsg.getFile();
+            String fileMd5 = file.getName();
+            uploadFileMsg.setFilePath(sroot);
+            byte[] bytes = Files.readAllBytes(Paths.get(String.valueOf(file)));
+
+            uploadFileMsg.setEnd(bytes.length);
+            uploadFileMsg.setFile_md5(fileMd5);
+            uploadFileMsg.setStart(0);
+            uploadFileMsg.setFile(file);
+            uploadFileMsg.setBytes(bytes);
+
             network = new NettyNetwork(uploadFileMsg);
-            //this.desktop.open(file); //Здесь код отправки на серевер или поменяю на send
+
+
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -88,11 +162,11 @@ public class CSfirstScreen  implements Initializable {
     }
 
     public void dropped(DragEvent dragEvent) throws FileNotFoundException {
-        List<File>files = dragEvent.getDragboard().getFiles();
+        List<File> files = dragEvent.getDragboard().getFiles();
         File file = files.get(0);
         if (file != null) {
             sendFile(file);
-             files = Collections.singletonList(file);
+            files = Collections.singletonList(file);
             printLog(log_area, files);
         }
 
@@ -106,11 +180,13 @@ public class CSfirstScreen  implements Initializable {
             textArea.appendText(file.getAbsolutePath() + "\n");
         }
     }
+
     public void hover(MouseEvent mouseEvent) {
         dragAndDropPane.setStyle("-fx-background-color: #F2F4F2;");
         text.setStyle("-fx-background-color: #F2F4F2;");
 
     }
+
     public void hoverBTN(MouseEvent mouseEvent) {
         download_btn.setStyle("-fx-background-color: #6abcd0;");
 
@@ -121,6 +197,7 @@ public class CSfirstScreen  implements Initializable {
         text.setStyle("-fx-background-color:#FFFFFF;");
 
     }
+
     public void BTNFree(MouseEvent mouseEvent) {
         download_btn.setStyle("-fx-background-color: #4b78bb;");
 
